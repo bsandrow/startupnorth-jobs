@@ -9,7 +9,7 @@ except ImportError:
     from distutils.core import setup
 
 requires = [ 'lxml', 'requests', 'cssselect' ]
-long_description = open('README.rst').read() + "\n\n" + open("Changelog").read()
+long_description = open('README.rst').read() + "\n\n" + open("ChangeLog").read()
 
 config = {
     'name'            : 'startupnorth-jobs-notifiaction',
