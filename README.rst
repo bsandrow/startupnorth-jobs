@@ -1,6 +1,6 @@
-===================================
-StartupNorth.ca Jobs Postings Email
-===================================
+=================
+startupnorth-jobs
+=================
 
 Scrape jobs.startupnorth.ca and create a nicely formatted text-based email
 notification.

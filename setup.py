@@ -12,7 +12,7 @@ requires = [ 'lxml', 'requests', 'cssselect' ]
 long_description = open('README.rst').read() + "\n\n" + open("ChangeLog").read()
 
 config = {
-    'name'            : 'startupnorth-jobs-notifiaction',
+    'name'            : 'startupnorth-jobs',
     'description'     : 'Scrape jobs.startupnorth.ca and create a nice text-base email.',
     'long_description': long_description,
     'author'          : 'Brandon Sandrowicz',
