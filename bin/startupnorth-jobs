@@ -1,0 +1,126 @@
+#!/usr/bin/env python
+
+import argparse
+import getpass
+import requests
+import smtplib
+import socket
+import sys
+
+from datetime import datetime
+from email.mime.text import MIMEText
+from lxml import html
+from itertools import imap
+
+cleanup_text = lambda x: x.strip()
+entry_template_with_date = """\
+%(title)s @ %(company)s
+   %(date)s - %(location)s
+   %(link)s
+"""
+entry_template_without_date = """\
+%(title)s @ %(company)s
+   %(location)s
+   %(link)s
+"""
+message_template = """\
+=============
+Featured Jobs
+=============
+
+%(featured_jobs)s
+
+====
+Jobs
+====
+
+%(jobs)s
+"""
+
+def parse_job_entry(row):
+    """ Parse the job entry into a dict() """
+    entry = {
+        'company': cleanup_text(row.cssselect('span.company-name')[0].text),
+        'link': cleanup_text(row.cssselect('a.job-link')[0].get('href')),
+        'title': cleanup_text(row.cssselect('a.job-link')[0].text),
+        'location': cleanup_text(row.cssselect('span.location')[0].text),
+    }
+
+    if len(row.cssselect('td.jobs-list-date')):
+        entry['date'] = cleanup_text(row.cssselect('td.jobs-list-date')[0].text)
+
+    return entry
+
+def format_job_entry(entry):
+    """ Format the job entry for display """
+    if 'date' in entry:
+        return entry_template_with_date % entry
+    else:
+        return entry_template_without_date % entry
+
+def get_options():
+    """ Get command-line options. """
+
+    address_default = "%s@%s" % ( getpass.getuser(), "localhost" )
+    #address_default = "%s@%s" % ( getpass.getuser(), socket.gethostname() )
+
+    parser = argparse.ArgumentParser(description="""
+        Send an email listing job positions posted to jobs.startupnorth.ca
+        """)
+
+    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output.')
+    parser.add_argument('-r', '--recipients', default=address_default,
+                        help=""" Comma-separated list of email addresses to
+                        send the report to. (default: %s)""" % (address_default))
+    parser.add_argument('-f', '--from', dest='from_addr', default=address_default,
+                        help=""" The email address that the report will be sent
+                        from. (default: %s)""" % (address_default) )
+    parser.add_argument('-s', '--smtp', default='localhost',
+                        help=""" The SMTP host to send the email through.
+                        (default: localhost) """)
+
+    options = parser.parse_args()
+
+    return options
+
+def generate_message(featured_jobs, jobs, from_addr, to_addrs):
+    """ Generate the email message. """
+    message = MIMEText(message_template % {
+        'featured_jobs': "\n".join(imap(format_job_entry, imap(parse_job_entry, featured_jobs.cssselect('tr.featured-job')))),
+        'jobs': "\n".join(imap(format_job_entry, imap(parse_job_entry, jobs.xpath(".//tr[starts-with(@class,' alternate')]")))),
+    })
+    message['Subject'] = 'StartupNorth.ca Jobs: %s' % datetime.now().strftime('%B %d %Y')
+    message['To'] = to_addrs
+    message['From'] = from_addr
+    return message
+
+def msg(text, show):
+    if show:
+        print text
+
+def main():
+    options = get_options()
+
+    msg("Fetching page...", options.verbose)
+    response = requests.get('http://jobs.startupnorth.ca')
+
+    msg("Parsing...", options.verbose)
+    root = html.fromstring(response.content)
+    try:
+        featured_jobs, jobs = root.cssselect('table.jobs-list')
+    except ValueError:
+        sys.exit("I am error")
+
+    msg("Generating email...", options.verbose)
+    message = generate_message(featured_jobs, jobs, options.from_addr, options.recipients)
+
+    msg("Sending...", options.verbose)
+    smtplib.SMTP(options.smtp).sendmail(options.from_addr, options.recipients, message.as_string())
+
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(">> Caught user interrupt. Exiting...")
+
+# vim:ft=python:tw=100
