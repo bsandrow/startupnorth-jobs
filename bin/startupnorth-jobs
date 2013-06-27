@@ -13,17 +13,17 @@ from lxml import html
 from itertools import imap
 
 cleanup_text = lambda x: x.strip()
-entry_template_with_date = """\
+entry_template_with_date = u"""\
 %(title)s @ %(company)s
    %(date)s - %(location)s
    %(link)s
 """
-entry_template_without_date = """\
+entry_template_without_date = u"""\
 %(title)s @ %(company)s
    %(location)s
    %(link)s
 """
-message_template = """\
+message_template = u"""\
 =============
 Featured Jobs
 =============
@@ -85,10 +85,11 @@ def get_options():
 
 def generate_message(featured_jobs, jobs, from_addr, to_addrs):
     """ Generate the email message. """
-    message = MIMEText(message_template % {
+    message_template_args = {
         'featured_jobs': "\n".join(imap(format_job_entry, imap(parse_job_entry, featured_jobs.cssselect('tr.featured-job')))),
         'jobs': "\n".join(imap(format_job_entry, imap(parse_job_entry, jobs.xpath(".//tr[starts-with(@class,' alternate')]")))),
-    })
+    }
+    message = MIMEText(message_template % message_template_args, _subtype='plain', _charset='utf-8')
     message['Subject'] = 'StartupNorth.ca Jobs: %s' % datetime.now().strftime('%B %d %Y')
     message['To'] = to_addrs
     message['From'] = from_addr
